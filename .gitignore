@@ -1,0 +1,5 @@
+/rack-cli
+/cmd/rack-cli/rack-cli
+.idea/
+.DS_Store
+servers.json
