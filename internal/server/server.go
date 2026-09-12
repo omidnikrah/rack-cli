@@ -1,66 +1,38 @@
 package server
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
 	"rack-cli/internal/entity"
+	"rack-cli/internal/storage"
+	"regexp"
+	"strconv"
+	"time"
 )
 
-type Storage interface {
-	Load() ([]entity.Server, error)
-	Save(server entity.Server) error
+type Storage = storage.Repo[entity.Server]
+
+var pingRTT = regexp.MustCompile(`time[=<]([0-9.]+)\s*ms`)
+
+func SSHCommand(srv entity.Server) *exec.Cmd {
+	return exec.Command("ssh", srv.RootUser+"@"+srv.IP)
 }
 
-type InputReader interface {
-	ReadInput(label string) string
-	ReadInputWithDefault(label, defaultValue string) string
-	ReadList(label string) []string
-}
-
-func Add(storage Storage, in InputReader) {
-	label := in.ReadInput("Label")
-	ip := in.ReadInput("IP address")
-	rootUser := in.ReadInputWithDefault("Root user", "root")
-	password := in.ReadInput("Password")
-	purpose := in.ReadInput("Purpose")
-	tags := in.ReadList("Tags")
-
-	newServer := entity.Server{
-		Label:    label,
-		IP:       ip,
-		RootUser: rootUser,
-		Password: password,
-		Purpose:  purpose,
-		Tags:     tags,
+func Ping(ctx context.Context, srv entity.Server) (time.Duration, error) {
+	out, err := exec.CommandContext(ctx, "ping", "-c", "1", srv.IP).CombinedOutput()
+	if err != nil {
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
+		}
+		return 0, fmt.Errorf("host unreachable")
 	}
 
-	sErr := storage.Save(newServer)
-	if sErr != nil {
-		fmt.Println(sErr)
-		return
+	m := pingRTT.FindSubmatch(out)
+	if m == nil {
+		return 0, nil
 	}
-	fmt.Printf("Added server: %+v\n", newServer)
-}
 
-func Edit(storage Storage, server entity.Server) {
-	fmt.Printf("You chose edit server: %d \n", server.ID)
-}
-
-func Delete() {
-	fmt.Println("You chose delete server")
-}
-
-func View() {
-	fmt.Println("You chose view server")
-}
-
-func Ping() {
-	fmt.Println("You chose ping server")
-}
-
-func SSH() {
-	fmt.Println("You chose ssh server")
-}
-
-func List() {
-	fmt.Println("You chose list servers")
+	ms, _ := strconv.ParseFloat(string(m[1]), 64)
+	return time.Duration(ms * float64(time.Millisecond)), nil
 }
