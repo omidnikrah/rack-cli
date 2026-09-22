@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"rack-cli/internal/entity"
 	"rack-cli/internal/server"
-	"rack-cli/internal/storage"
 	"strings"
 	"time"
 
@@ -13,9 +12,20 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/atotto/clipboard"
 )
 
-func newServerList(repo server.Storage) *listScreen[entity.Server] {
+type copiedMsg struct {
+}
+
+const clipboardTTL = 30 * time.Second
+
+type serverInput struct {
+	entity.Server
+	Password string
+}
+
+func newServerList(svc *server.Service) *listScreen[entity.Server] {
 	return newListScreen(listConfig[entity.Server]{
 		title: "Manage Servers",
 		id: func(s entity.Server) int {
@@ -29,17 +39,17 @@ func newServerList(repo server.Storage) *listScreen[entity.Server] {
 			return s.Label + " " + s.IP + " " + strings.Join(s.Tags, ", ")
 		},
 		open: func(s entity.Server) Screen {
-			return newServerDetail(repo, s)
+			return newServerDetail(svc, s)
 		},
 		add: func() Screen {
-			return newServerForm(repo, entity.Server{})
+			return newServerForm(svc, entity.Server{})
 		},
 		edit: func(s entity.Server) Screen {
-			return newServerForm(repo, s)
+			return newServerForm(svc, s)
 		},
 		remove: func(id int) tea.Cmd {
 			return deleteCmd(func() error {
-				return repo.Delete(id)
+				return svc.Delete(id)
 			})
 		},
 		confirm: func(s entity.Server) string {
@@ -48,11 +58,11 @@ func newServerList(repo server.Storage) *listScreen[entity.Server] {
 	})
 }
 
-func newServerForm(repo server.Storage, original entity.Server) *formScreen[entity.Server] {
-	return newFormScreen(formConfig[entity.Server]{
+func newServerForm(svc *server.Service, original entity.Server) *formScreen[serverInput] {
+	return newFormScreen(formConfig[serverInput]{
 		addTitle:  "Add Server",
 		editTitle: "Edit Server",
-		id: func(s entity.Server) int {
+		id: func(s serverInput) int {
 			return s.ID
 		},
 		fields: []fieldSpec{
@@ -63,7 +73,7 @@ func newServerForm(repo server.Storage, original entity.Server) *formScreen[enti
 			{label: "Purpose"},
 			{label: "Tags", placeholder: "comma, separated"},
 		},
-		load: func(s entity.Server, in []textinput.Model) {
+		load: func(s serverInput, in []textinput.Model) {
 			in[0].SetValue(s.Label)
 			in[1].SetValue(s.IP)
 			in[2].SetValue(s.RootUser)
@@ -71,28 +81,31 @@ func newServerForm(repo server.Storage, original entity.Server) *formScreen[enti
 			in[4].SetValue(s.Purpose)
 			in[5].SetValue(strings.Join(s.Tags, ", "))
 		},
-		build: func(id int, in []textinput.Model) entity.Server {
+		build: func(id int, in []textinput.Model) serverInput {
 			root := strings.TrimSpace(in[2].Value())
 			if root == "" {
 				root = "root"
 			}
-			return entity.Server{
-				ID:       id,
-				Label:    strings.TrimSpace(in[0].Value()),
-				IP:       strings.TrimSpace(in[1].Value()),
-				RootUser: root,
+			return serverInput{
+				Server: entity.Server{
+					ID:       id,
+					Label:    strings.TrimSpace(in[0].Value()),
+					IP:       strings.TrimSpace(in[1].Value()),
+					RootUser: root,
+
+					Purpose: strings.TrimSpace(in[4].Value()),
+					Tags:    parseTags(in[5].Value()),
+				},
 				Password: in[3].Value(),
-				Purpose:  strings.TrimSpace(in[4].Value()),
-				Tags:     parseTags(in[5].Value()),
 			}
 		},
-		save: func(s entity.Server) tea.Cmd {
+		save: func(s serverInput) tea.Cmd {
 			return saveCmd(func() error {
-				_, err := storage.Save[entity.Server](repo, s)
+				_, err := svc.Save(s.Server, s.Password)
 				return err
 			})
 		},
-	}, original)
+	}, serverInput{Server: original})
 }
 
 type pingResultMsg struct {
@@ -105,9 +118,10 @@ type sshFinishedMsg struct {
 }
 
 type serverDetailScreen struct {
-	repo    server.Storage
+	svc     *server.Service
 	srv     entity.Server
-	reveal  bool
+	plain   string
+	copied  bool
 	spinner spinner.Model
 	pinging bool
 	pinged  bool
@@ -115,10 +129,10 @@ type serverDetailScreen struct {
 	pingErr error
 }
 
-func newServerDetail(repo server.Storage, srv entity.Server) *serverDetailScreen {
+func newServerDetail(svc *server.Service, srv entity.Server) *serverDetailScreen {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
-	return &serverDetailScreen{repo: repo, srv: srv, spinner: sp}
+	return &serverDetailScreen{svc: svc, srv: srv, spinner: sp}
 }
 
 func (s *serverDetailScreen) Title() string {
@@ -147,15 +161,32 @@ func (s *serverDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 		var cmd tea.Cmd
 		s.spinner, cmd = s.spinner.Update(msg)
 		return s, cmd
+	case copiedMsg:
+		s.copied = true
+		return s, nil
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, keys.Back):
 			return s, pop
 		case key.Matches(msg, keys.Edit):
-			return s, push(newServerForm(s.repo, s.srv))
+			return s, push(newServerForm(s.svc, s.srv))
 		case key.Matches(msg, keys.Reveal):
-			s.reveal = !s.reveal
+			if s.plain != "" {
+				s.plain = ""
+				return s, nil
+			}
+			plain, err := s.svc.Password(s.srv)
+			if err != nil {
+				return s, fail(err)
+			}
+			s.plain = plain
 			return s, nil
+		case key.Matches(msg, keys.Copy):
+			plain, err := s.svc.Password(s.srv)
+			if err != nil {
+				return s, fail(err)
+			}
+			return s, copyPasswordCmd(plain)
 		case key.Matches(msg, keys.Ping):
 			if s.pinging {
 				return s, nil
@@ -174,8 +205,8 @@ func (s *serverDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 
 func (s *serverDetailScreen) View() string {
 	password := "••••••••"
-	if s.reveal {
-		password = s.srv.Password
+	if s.plain != "" {
+		password = s.plain
 	}
 
 	rows := [][2]string{
@@ -206,15 +237,20 @@ func (s *serverDetailScreen) View() string {
 		b.WriteString(okStyle.Render("reachable"))
 	}
 
+	if s.copied {
+		b.WriteString(okStyle.Render("password copied · clears in " + clipboardTTL.String()))
+		b.WriteString("\n")
+	}
+
 	return b.String()
 }
 
 func (s *serverDetailScreen) ShortHelp() []key.Binding {
-	return []key.Binding{keys.Ping, keys.SSH, keys.Reveal, keys.Edit, keys.Back}
+	return []key.Binding{keys.Ping, keys.SSH, keys.Reveal, keys.Copy, keys.Edit, keys.Back}
 }
 
 func (s *serverDetailScreen) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{keys.Ping, keys.SSH, keys.Reveal}, {keys.Edit, keys.Back, keys.Quit}}
+	return [][]key.Binding{{keys.Ping, keys.SSH, keys.Reveal, keys.Copy}, {keys.Edit, keys.Back, keys.Quit}}
 }
 
 func pingCmd(srv entity.Server) tea.Cmd {
@@ -232,4 +268,19 @@ func serverRowDescription(s entity.Server) string {
 	}
 
 	return fmt.Sprintf("%s · %s · [%s]", s.IP, s.Purpose, strings.Join(s.Tags, ", "))
+}
+
+func copyPasswordCmd(plain string) tea.Cmd {
+	return tea.Sequence(
+		func() tea.Msg {
+			if err := clipboard.WriteAll(plain); err != nil {
+				return errorMsg{err}
+			}
+			return copiedMsg{}
+		}, tea.Tick(clipboardTTL, func(t time.Time) tea.Msg {
+			if current, _ := clipboard.ReadAll(); current == plain {
+				clipboard.WriteAll("")
+			}
+			return nil
+		}))
 }

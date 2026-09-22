@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"rack-cli/internal/entity"
+	"rack-cli/internal/secret"
+	"rack-cli/internal/server"
 	"rack-cli/internal/storage"
 	"rack-cli/internal/tui"
 
@@ -24,7 +26,8 @@ func run() error {
 		return fmt.Errorf("locating config dir: %w", err)
 	}
 
-	servers := storage.NewJSONRepo[entity.Server](filepath.Join(dir, "servers.json"))
+	vault := secret.NewVault(secret.Keychain{})
+	servers := server.NewService(storage.NewJSONRepo[entity.Server](filepath.Join(dir, "servers.json")), vault)
 	domains := storage.NewJSONRepo[entity.Domain](filepath.Join(dir, "domains.json"))
 
 	_, err = tea.NewProgram(tui.New(servers, domains)).Run()

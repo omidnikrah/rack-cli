@@ -13,7 +13,7 @@ type menuScreen struct {
 	list list.Model
 }
 
-func newMenu(servers server.Storage, domains domain.Storage) *menuScreen {
+func newMenu(servers *server.Service, domains domain.Storage) *menuScreen {
 	items := []list.Item{
 		menuItem{
 			label: "Manage Servers", open: func() Screen {

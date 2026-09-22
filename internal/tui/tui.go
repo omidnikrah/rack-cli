@@ -12,7 +12,7 @@ import (
 )
 
 type Model struct {
-	servers server.Storage
+	servers *server.Service
 	domains domain.Storage
 
 	stack      []Screen
@@ -25,7 +25,7 @@ type Model struct {
 	err    error
 }
 
-func New(servers server.Storage, domains domain.Storage) *Model {
+func New(servers *server.Service, domains domain.Storage) *Model {
 	return &Model{
 		servers: servers,
 		domains: domains,

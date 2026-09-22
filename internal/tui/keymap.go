@@ -15,6 +15,7 @@ type keyMap struct {
 	Filter key.Binding
 	Help   key.Binding
 	Reveal key.Binding
+	Copy   key.Binding
 	Quit   key.Binding
 }
 
@@ -31,6 +32,7 @@ var keys = keyMap{
 	Filter: key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
 	Help:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	Reveal: key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "reveal password")),
+	Copy:   key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy password")),
 	Quit:   key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 }
 
