@@ -28,6 +28,11 @@ type errorMsg struct {
 	err error
 }
 
+type pickedMsg struct {
+	value string
+	label string
+}
+
 func fail(err error) tea.Cmd {
 	return func() tea.Msg {
 		return errorMsg{err}

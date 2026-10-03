@@ -17,6 +17,7 @@ type listConfig[T any] struct {
 	edit    func(T) Screen
 	remove  func(id int) tea.Cmd
 	confirm func(T) string
+	pick    func(T) tea.Cmd
 }
 
 type listScreen[T any] struct {
@@ -55,17 +56,23 @@ func (ls *listScreen[T]) Update(msg tea.Msg) (Screen, tea.Cmd) {
 		case key.Matches(msg, keys.Back):
 			return ls, pop
 		case key.Matches(msg, keys.Add):
+			if ls.cfg.pick != nil {
+				return ls, nil
+			}
 			return ls, push(ls.cfg.add())
 		case key.Matches(msg, keys.Enter):
 			if row, ok := ls.selected(); ok {
+				if ls.cfg.pick != nil {
+					return ls, ls.cfg.pick(row)
+				}
 				return ls, push(ls.cfg.open(row))
 			}
 			return ls, nil
-		case key.Matches(msg, keys.Edit):
+		case key.Matches(msg, keys.Edit) && ls.cfg.pick == nil:
 			if row, ok := ls.selected(); ok {
 				return ls, push(ls.cfg.edit(row))
 			}
-		case key.Matches(msg, keys.Delete):
+		case key.Matches(msg, keys.Delete) && ls.cfg.pick == nil:
 			if row, ok := ls.selected(); ok {
 				return ls, push(newConfirm(ls.cfg.confirm(row), ls.cfg.remove(ls.cfg.id(row))))
 			}
@@ -80,6 +87,10 @@ func (ls *listScreen[T]) Update(msg tea.Msg) (Screen, tea.Cmd) {
 func (ls *listScreen[T]) View() string { return ls.list.View() }
 
 func (ls *listScreen[T]) ShortHelp() []key.Binding {
+	if ls.cfg.pick != nil {
+		return []key.Binding{keys.Up, keys.Down, keys.Enter, keys.Filter, keys.Back}
+	}
+
 	return []key.Binding{
 		keys.Up,
 		keys.Down,
@@ -93,6 +104,10 @@ func (ls *listScreen[T]) ShortHelp() []key.Binding {
 }
 
 func (ls *listScreen[T]) FullHelp() [][]key.Binding {
+	if ls.cfg.pick != nil {
+		return [][]key.Binding{{keys.Up, keys.Down, keys.Enter, keys.Filter}, {keys.Back, keys.Quit, keys.Help}}
+	}
+
 	return [][]key.Binding{
 		{keys.Up, keys.Down, keys.Enter},
 		{keys.Add, keys.Edit, keys.Delete, keys.Filter},

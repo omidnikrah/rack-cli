@@ -11,6 +11,7 @@ type fieldSpec struct {
 	label       string
 	placeholder string
 	password    bool
+	pick        func() Screen
 }
 
 type formConfig[T any] struct {
@@ -18,14 +19,15 @@ type formConfig[T any] struct {
 	editTitle string
 	fields    []fieldSpec
 	id        func(T) int
-	load      func(orig T, in []textinput.Model)
-	build     func(id int, in []textinput.Model) T
+	load      func(orig T, in []textinput.Model, vals []string)
+	build     func(id int, in []textinput.Model, vals []string) T
 	save      func(T) tea.Cmd
 }
 
 type formScreen[T any] struct {
 	cfg      formConfig[T]
 	inputs   []textinput.Model
+	values   []string
 	focus    int
 	original T
 	err      error
@@ -34,6 +36,7 @@ type formScreen[T any] struct {
 func newFormScreen[T any](cfg formConfig[T], original T) *formScreen[T] {
 	s := &formScreen[T]{cfg: cfg, original: original}
 	s.inputs = make([]textinput.Model, len(cfg.fields))
+	s.values = make([]string, len(cfg.fields))
 
 	for i, f := range cfg.fields {
 		ti := textinput.New()
@@ -47,7 +50,7 @@ func newFormScreen[T any](cfg formConfig[T], original T) *formScreen[T] {
 		s.inputs[i] = ti
 	}
 
-	cfg.load(original, s.inputs)
+	cfg.load(original, s.inputs, s.values)
 	s.inputs[0].Focus()
 
 	return s
@@ -83,14 +86,31 @@ func (fs *formScreen[T]) Update(msg tea.Msg) (Screen, tea.Cmd) {
 		case "shift+tab", "up":
 			return fs, fs.focusOn(fs.focus - 1)
 		case "enter":
+			if p := fs.cfg.fields[fs.focus].pick; p != nil {
+				return fs, push(p())
+			}
+
 			if fs.focus < len(fs.inputs)-1 {
 				return fs, fs.focusOn(fs.focus + 1)
 			}
 
-			v := fs.cfg.build(fs.cfg.id(fs.original), fs.inputs)
+			v := fs.cfg.build(fs.cfg.id(fs.original), fs.inputs, fs.values)
 			fs.err = nil
 			return fs, fs.cfg.save(v)
 		}
+
+	case pickedMsg:
+		fs.inputs[fs.focus].SetValue(msg.label)
+		fs.values[fs.focus] = msg.value
+		return fs, nil
+	}
+
+	if k, ok := msg.(tea.KeyPressMsg); ok && fs.cfg.fields[fs.focus].pick != nil {
+		if s := k.String(); s == "backspace" || s == "delete" {
+			fs.inputs[fs.focus].SetValue("")
+			fs.values[fs.focus] = ""
+		}
+		return fs, nil
 	}
 
 	var cmd tea.Cmd

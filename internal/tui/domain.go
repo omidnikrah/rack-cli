@@ -13,7 +13,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-func newDomainList(repo domain.Storage) *listScreen[entity.Domain] {
+const serverField = 1
+
+func newDomainList(repo domain.Storage, ips *serverIndex) *listScreen[entity.Domain] {
 	return newListScreen(listConfig[entity.Domain]{
 		title: "Manage Domains",
 		id: func(d entity.Domain) int {
@@ -22,18 +24,20 @@ func newDomainList(repo domain.Storage) *listScreen[entity.Domain] {
 		rowName: func(d entity.Domain) string {
 			return d.Name
 		},
-		rowDesc: domainRowDescription,
+		rowDesc: func(d entity.Domain) string {
+			return domainRowDescription(d, ips)
+		},
 		filter: func(d entity.Domain) string {
 			return d.Name + " " + d.Registrar + " " + strings.Join(d.Tags, ", ")
 		},
 		open: func(d entity.Domain) Screen {
-			return newDomainDetail(repo, d)
+			return newDomainDetail(repo, d, ips)
 		},
 		add: func() Screen {
-			return newDomainForm(repo, entity.Domain{})
+			return newDomainForm(repo, entity.Domain{}, ips)
 		},
 		edit: func(d entity.Domain) Screen {
-			return newDomainForm(repo, d)
+			return newDomainForm(repo, d, ips)
 		},
 		remove: func(id int) tea.Cmd {
 			return deleteCmd(func() error {
@@ -46,7 +50,7 @@ func newDomainList(repo domain.Storage) *listScreen[entity.Domain] {
 	})
 }
 
-func newDomainForm(repo domain.Storage, original entity.Domain) *formScreen[entity.Domain] {
+func newDomainForm(repo domain.Storage, original entity.Domain, ips *serverIndex) *formScreen[entity.Domain] {
 	return newFormScreen(formConfig[entity.Domain]{
 		addTitle:  "Add Domain",
 		editTitle: "Edit Domain",
@@ -55,24 +59,29 @@ func newDomainForm(repo domain.Storage, original entity.Domain) *formScreen[enti
 		},
 		fields: []fieldSpec{
 			{label: "Name", placeholder: "example.com"},
-			{label: "Server ID", placeholder: "0 = unassigned"},
+			{label: "Server", placeholder: "enter to pick, backspace to clear", pick: func() Screen {
+				return newServerPicker()
+			}},
 			{label: "Registrar"},
 			{label: "Expires At", placeholder: "2027-10-01"},
 			{label: "Notes"},
 			{label: "Tags", placeholder: "comma, separated"},
 		},
-		load: func(d entity.Domain, in []textinput.Model) {
+		load: func(d entity.Domain, in []textinput.Model, vals []string) {
 			in[0].SetValue(d.Name)
 			if d.ServerID != 0 {
-				in[1].SetValue(strconv.Itoa(d.ServerID))
+				if ips.exists(d.ServerID) {
+					vals[serverField] = strconv.Itoa(d.ServerID)
+				}
+				in[serverField].SetValue(ips.label(d.ServerID))
 			}
 			in[2].SetValue(d.Registrar)
 			in[3].SetValue(d.ExpiresAt)
 			in[4].SetValue(d.Notes)
 			in[5].SetValue(strings.Join(d.Tags, ", "))
 		},
-		build: func(id int, in []textinput.Model) entity.Domain {
-			serverID, _ := strconv.Atoi(strings.TrimSpace(in[1].Value()))
+		build: func(id int, in []textinput.Model, vals []string) entity.Domain {
+			serverID, _ := strconv.Atoi(vals[serverField])
 			return entity.Domain{
 				ID:        id,
 				Name:      strings.TrimSpace(in[0].Value()),
@@ -95,10 +104,11 @@ func newDomainForm(repo domain.Storage, original entity.Domain) *formScreen[enti
 type domainDetailScreen struct {
 	repo domain.Storage
 	dom  entity.Domain
+	ips  *serverIndex
 }
 
-func newDomainDetail(repo domain.Storage, dom entity.Domain) *domainDetailScreen {
-	return &domainDetailScreen{repo: repo, dom: dom}
+func newDomainDetail(repo domain.Storage, dom entity.Domain, ips *serverIndex) *domainDetailScreen {
+	return &domainDetailScreen{repo: repo, dom: dom, ips: ips}
 }
 
 func (d *domainDetailScreen) Title() string {
@@ -114,7 +124,7 @@ func (d *domainDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 		return d, pop
 	}
 	if k, ok := msg.(tea.KeyPressMsg); ok && key.Matches(k, keys.Edit) {
-		return d, push(newDomainForm(d.repo, d.dom))
+		return d, push(newDomainForm(d.repo, d.dom, d.ips))
 	}
 
 	return d, nil
@@ -123,7 +133,7 @@ func (d *domainDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 func (d *domainDetailScreen) View() string {
 	server := "unassigned"
 	if d.dom.ServerID > 0 {
-		server = fmt.Sprintf("#%d", d.dom.ServerID)
+		server = d.ips.label(d.dom.ServerID)
 	}
 	rows := [][2]string{
 		{"Name", d.dom.Name},
@@ -150,7 +160,7 @@ func (d *domainDetailScreen) FullHelp() [][]key.Binding {
 	return [][]key.Binding{{keys.Edit, keys.Back, keys.Quit}}
 }
 
-func domainRowDescription(d entity.Domain) string {
+func domainRowDescription(d entity.Domain, ips *serverIndex) string {
 	var parts []string
 	if d.Registrar != "" {
 		parts = append(parts, d.Registrar)
@@ -159,7 +169,7 @@ func domainRowDescription(d entity.Domain) string {
 		parts = append(parts, d.ExpiresAt)
 	}
 	if d.ServerID != 0 {
-		parts = append(parts, fmt.Sprintf("server #%d", d.ServerID))
+		parts = append(parts, "server "+ips.label(d.ServerID))
 	}
 	if len(d.Tags) > 0 {
 		parts = append(parts, fmt.Sprintf("[%s]", strings.Join(d.Tags, ", ")))

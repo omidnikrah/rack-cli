@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"rack-cli/internal/entity"
 	"rack-cli/internal/server"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,7 +74,7 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			{label: "Purpose"},
 			{label: "Tags", placeholder: "comma, separated"},
 		},
-		load: func(s serverInput, in []textinput.Model) {
+		load: func(s serverInput, in []textinput.Model, vals []string) {
 			in[0].SetValue(s.Label)
 			in[1].SetValue(s.IP)
 			in[2].SetValue(s.RootUser)
@@ -81,7 +82,7 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			in[4].SetValue(s.Purpose)
 			in[5].SetValue(strings.Join(s.Tags, ", "))
 		},
-		build: func(id int, in []textinput.Model) serverInput {
+		build: func(id int, in []textinput.Model, vals []string) serverInput {
 			root := strings.TrimSpace(in[2].Value())
 			if root == "" {
 				root = "root"
@@ -106,6 +107,27 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			})
 		},
 	}, serverInput{Server: original})
+}
+
+func newServerPicker() *listScreen[entity.Server] {
+	return newListScreen(listConfig[entity.Server]{
+		title: "Select Server",
+		id: func(s entity.Server) int {
+			return s.ID
+		},
+		rowName: func(s entity.Server) string {
+			return s.Label
+		},
+		rowDesc: serverRowDescription,
+		filter: func(s entity.Server) string {
+			return s.Label + " " + s.IP + " " + strings.Join(s.Tags, ", ")
+		},
+		pick: func(s entity.Server) tea.Cmd {
+			return tea.Sequence(pop, func() tea.Msg {
+				return pickedMsg{value: strconv.Itoa(s.ID), label: s.IP}
+			})
+		},
+	})
 }
 
 type pingResultMsg struct {

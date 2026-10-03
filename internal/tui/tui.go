@@ -14,6 +14,7 @@ import (
 type Model struct {
 	servers *server.Service
 	domains domain.Storage
+	ips     *serverIndex
 
 	stack      []Screen
 	serverRows []entity.Server
@@ -26,10 +27,13 @@ type Model struct {
 }
 
 func New(servers *server.Service, domains domain.Storage) *Model {
+	ips := &serverIndex{}
+
 	return &Model{
 		servers: servers,
 		domains: domains,
-		stack:   []Screen{newMenu(servers, domains)},
+		ips:     ips,
+		stack:   []Screen{newMenu(servers, domains, ips)},
 		help:    help.New(),
 	}
 }
@@ -89,6 +93,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.serverRows = msg.servers
+		m.ips.set(msg.servers)
 		return m, m.refreshLists()
 
 	case domainsLoadedMsg:
@@ -187,6 +192,13 @@ func (m *Model) refreshLists() tea.Cmd {
 			cmds = append(cmds, s.setItems(m.serverRows))
 		case *listScreen[entity.Domain]:
 			cmds = append(cmds, s.setItems(m.domainRows))
+		case *domainDetailScreen:
+			for _, d := range m.domainRows {
+				if d.ID == s.dom.ID {
+					s.dom = d
+					break
+				}
+			}
 		}
 	}
 
