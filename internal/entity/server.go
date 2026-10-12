@@ -4,16 +4,18 @@ import (
 	"errors"
 	"rack-cli/internal/secret"
 	"strings"
+	"time"
 )
 
 type Server struct {
-	ID       int           `json:"id"`
-	Label    string        `json:"label"`
-	IP       string        `json:"ip"`
-	RootUser string        `json:"root_user"`
-	Password secret.Sealed `json:"password"`
-	Purpose  string        `json:"purpose"`
-	Tags     []string      `json:"tags"`
+	ID        int           `json:"id"`
+	Label     string        `json:"label"`
+	IP        string        `json:"ip"`
+	RootUser  string        `json:"root_user"`
+	Password  secret.Sealed `json:"password"`
+	Purpose   string        `json:"purpose"`
+	ExpiredAt string        `json:"expired_at"`
+	Tags      []string      `json:"tags"`
 }
 
 func (s Server) GetID() int {
@@ -38,5 +40,13 @@ func (s Server) Validate() error {
 		return errors.New("root user is required")
 	}
 
-	return nil
+	return validateDate(s.ExpiredAt, "expired at")
+}
+
+func (s Server) DaysLeft() (days int, ok bool) {
+	return s.DaysLeftAt(time.Now())
+}
+
+func (s Server) DaysLeftAt(now time.Time) (days int, ok bool) {
+	return daysUntil(s.ExpiredAt, now)
 }

@@ -71,6 +71,7 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			{label: "IP address"},
 			{label: "Root user", placeholder: "root"},
 			{label: "Password", password: true},
+			{label: "Expired At", placeholder: "2026-12-31"},
 			{label: "Purpose"},
 			{label: "Tags", placeholder: "comma, separated"},
 		},
@@ -79,8 +80,9 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			in[1].SetValue(s.IP)
 			in[2].SetValue(s.RootUser)
 			in[3].SetValue(s.Password)
-			in[4].SetValue(s.Purpose)
-			in[5].SetValue(strings.Join(s.Tags, ", "))
+			in[4].SetValue(s.ExpiredAt)
+			in[5].SetValue(s.Purpose)
+			in[6].SetValue(strings.Join(s.Tags, ", "))
 		},
 		build: func(id int, in []textinput.Model, vals []string) serverInput {
 			root := strings.TrimSpace(in[2].Value())
@@ -94,8 +96,9 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 					IP:       strings.TrimSpace(in[1].Value()),
 					RootUser: root,
 
-					Purpose: strings.TrimSpace(in[4].Value()),
-					Tags:    parseTags(in[5].Value()),
+					ExpiredAt: strings.TrimSpace(in[4].Value()),
+					Purpose:   strings.TrimSpace(in[5].Value()),
+					Tags:      parseTags(in[6].Value()),
 				},
 				Password: in[3].Value(),
 			}
@@ -235,6 +238,7 @@ func (s *serverDetailScreen) View() string {
 		{"IP", s.srv.IP},
 		{"Root user", s.srv.RootUser},
 		{"Password", password},
+		{"Expired at", s.srv.ExpiredAt},
 		{"Purpose", s.srv.Purpose},
 		{"Tags", strings.Join(s.srv.Tags, ", ")},
 	}

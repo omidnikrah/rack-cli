@@ -1,10 +1,16 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"rack-cli/internal/entity"
+	"rack-cli/internal/expiry"
+	"rack-cli/internal/notify"
+	"rack-cli/internal/schedule"
 	"rack-cli/internal/secret"
 	"rack-cli/internal/server"
 	"rack-cli/internal/storage"
@@ -26,10 +32,58 @@ func run() error {
 		return fmt.Errorf("locating config dir: %w", err)
 	}
 
-	vault := secret.NewVault(secret.Keychain{})
-	servers := server.NewService(storage.NewJSONRepo[entity.Server](filepath.Join(dir, "servers.json")), vault)
-	domains := storage.NewJSONRepo[entity.Domain](filepath.Join(dir, "domains.json"))
+	check := flag.Bool("check", false, "print servers close to expiry and send notifications")
+	enable := flag.Bool("enable-notify", false, "run the expiry check daily at 09:00 (macOS)")
+	flag.Parse()
 
-	_, err = tea.NewProgram(tui.New(servers, domains)).Run()
+	serverRepo := storage.NewJSONRepo[entity.Server](filepath.Join(dir, "servers.json"))
+	domainRepo := storage.NewJSONRepo[entity.Domain](filepath.Join(dir, "domains.json"))
+
+	switch {
+	case *check:
+		return runExpiry(os.Stdout, serverRepo, domainRepo)
+	case *enable:
+		return enableNotify(os.Stdout, dir)
+	}
+
+	vault := secret.NewVault(secret.Keychain{})
+	servers := server.NewService(serverRepo, vault)
+	_, err = tea.NewProgram(tui.New(servers, domainRepo)).Run()
 	return err
+}
+
+func runExpiry(w io.Writer, serverRepo storage.Repo[entity.Server], domainRepo storage.Repo[entity.Domain]) error {
+	servers, err := serverRepo.Load()
+	if err != nil {
+		return err
+	}
+
+	domains, err := domainRepo.Load()
+	if err != nil {
+		return err
+	}
+
+	msgs := expiry.Messages(servers, domains)
+	if len(msgs) == 0 {
+		fmt.Fprintln(w, "No servers expiring soon.")
+	}
+
+	var errs []error
+	for _, msg := range msgs {
+		fmt.Fprintln(w, msg)
+		if err := notify.Send("Server expiring", msg); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func enableNotify(w io.Writer, dir string) error {
+	if err := schedule.EnsureInstalled(dir); err != nil {
+		return err
+	}
+
+	fmt.Fprintln(w, "Expiry notifications enabled: checking daily at 09:00.")
+	return nil
 }
