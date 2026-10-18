@@ -192,6 +192,13 @@ func (m *Model) refreshLists() tea.Cmd {
 			cmds = append(cmds, s.setItems(m.serverRows))
 		case *listScreen[entity.Domain]:
 			cmds = append(cmds, s.setItems(m.domainRows))
+		case *serverDetailScreen:
+			for _, srv := range m.serverRows {
+				if srv.ID == s.srv.ID {
+					s.srv = srv
+					break
+				}
+			}
 		case *domainDetailScreen:
 			for _, d := range m.domainRows {
 				if d.ID == s.dom.ID {
