@@ -2,6 +2,7 @@ package entity
 
 import (
 	"errors"
+	"net"
 	"rack-cli/internal/secret"
 	"strings"
 	"time"
@@ -34,6 +35,10 @@ func (s Server) Validate() error {
 
 	if strings.TrimSpace(s.IP) == "" {
 		return errors.New("IP address is required")
+	}
+
+	if net.ParseIP(s.IP) == nil {
+		return errors.New("invalid IP address")
 	}
 
 	if strings.TrimSpace(s.RootUser) == "" {
