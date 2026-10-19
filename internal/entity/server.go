@@ -15,6 +15,7 @@ type Server struct {
 	RootUser  string        `json:"root_user"`
 	Password  secret.Sealed `json:"password"`
 	Purpose   string        `json:"purpose"`
+	Price     *uint         `json:"price"`
 	ExpiredAt string        `json:"expired_at"`
 	Tags      []string      `json:"tags"`
 }
@@ -43,6 +44,10 @@ func (s Server) Validate() error {
 
 	if strings.TrimSpace(s.RootUser) == "" {
 		return errors.New("root user is required")
+	}
+
+	if s.Price != nil && *s.Price == 0 {
+		return errors.New("price must be greater than 0")
 	}
 
 	return validateDate(s.ExpiredAt, "expired at")

@@ -64,6 +64,7 @@ func newDomainForm(repo domain.Storage, original entity.Domain, ips *serverIndex
 			}},
 			{label: "Registrar"},
 			{label: "Expires At", placeholder: "2027-10-01"},
+			{label: "Price", placeholder: "in USD"},
 			{label: "Notes"},
 			{label: "Tags", placeholder: "comma, separated"},
 		},
@@ -77,20 +78,28 @@ func newDomainForm(repo domain.Storage, original entity.Domain, ips *serverIndex
 			}
 			in[2].SetValue(d.Registrar)
 			in[3].SetValue(d.ExpiresAt)
-			in[4].SetValue(d.Notes)
-			in[5].SetValue(strings.Join(d.Tags, ", "))
+			in[4].SetValue(pricePtrToString(d.Price))
+			in[5].SetValue(d.Notes)
+			in[6].SetValue(strings.Join(d.Tags, ", "))
 		},
 		build: func(id int, in []textinput.Model, vals []string) entity.Domain {
 			serverID, _ := strconv.Atoi(vals[serverField])
+
+			price, _ := toPricePtr(in[4].Value())
+
 			return entity.Domain{
 				ID:        id,
 				Name:      strings.TrimSpace(in[0].Value()),
 				ServerID:  serverID,
 				Registrar: strings.TrimSpace(in[2].Value()),
 				ExpiresAt: strings.TrimSpace(in[3].Value()),
-				Notes:     strings.TrimSpace(in[4].Value()),
-				Tags:      parseTags(in[5].Value()),
+				Price:     price,
+				Notes:     strings.TrimSpace(in[5].Value()),
+				Tags:      parseTags(in[6].Value()),
 			}
+		},
+		validate: func(d entity.Domain) error {
+			return d.Validate()
 		},
 		save: func(d entity.Domain) tea.Cmd {
 			return saveCmd(func() error {
@@ -140,6 +149,7 @@ func (d *domainDetailScreen) View() string {
 		{"Server", server},
 		{"Registrar", d.dom.Registrar},
 		{"Expires At", d.dom.ExpiresAt},
+		{"Price", pricePtrToString(d.dom.Price)},
 		{"Notes", d.dom.Notes},
 		{"Tags", strings.Join(d.dom.Tags, ", ")},
 	}

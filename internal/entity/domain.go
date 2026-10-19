@@ -12,6 +12,7 @@ type Domain struct {
 	ServerID  int      `json:"server_id"`
 	Registrar string   `json:"registrar"`
 	ExpiresAt string   `json:"expires_at"`
+	Price     *uint    `json:"price"`
 	Notes     string   `json:"notes"`
 	Tags      []string `json:"tags"`
 }
@@ -30,6 +31,11 @@ func (d Domain) Validate() error {
 	if strings.Contains(d.Name, " ") {
 		return errors.New("name cannot contain spaces")
 	}
+
+	if d.Price != nil && *d.Price == 0 {
+		return errors.New("price must be greater than 0")
+	}
+
 	return validateDate(d.ExpiresAt, "expires at")
 }
 
