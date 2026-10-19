@@ -72,6 +72,7 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			{label: "Root user", placeholder: "root"},
 			{label: "Password", password: true},
 			{label: "Expired At", placeholder: "2026-12-31"},
+			{label: "Price", placeholder: "in USD"},
 			{label: "Purpose"},
 			{label: "Tags", placeholder: "comma, separated"},
 		},
@@ -81,14 +82,18 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			in[2].SetValue(s.RootUser)
 			in[3].SetValue(s.Password)
 			in[4].SetValue(s.ExpiredAt)
-			in[5].SetValue(s.Purpose)
-			in[6].SetValue(strings.Join(s.Tags, ", "))
+			in[5].SetValue(pricePtrToString(s.Price))
+			in[6].SetValue(s.Purpose)
+			in[7].SetValue(strings.Join(s.Tags, ", "))
 		},
 		build: func(id int, in []textinput.Model, vals []string) serverInput {
 			root := strings.TrimSpace(in[2].Value())
 			if root == "" {
 				root = "root"
 			}
+
+			price, _ := toPricePtr(in[5].Value())
+
 			return serverInput{
 				Server: entity.Server{
 					ID:       id,
@@ -97,11 +102,15 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 					RootUser: root,
 
 					ExpiredAt: strings.TrimSpace(in[4].Value()),
-					Purpose:   strings.TrimSpace(in[5].Value()),
-					Tags:      parseTags(in[6].Value()),
+					Price:     price,
+					Purpose:   strings.TrimSpace(in[6].Value()),
+					Tags:      parseTags(in[7].Value()),
 				},
 				Password: in[3].Value(),
 			}
+		},
+		validate: func(s serverInput) error {
+			return s.Validate()
 		},
 		save: func(s serverInput) tea.Cmd {
 			return saveCmd(func() error {
@@ -239,6 +248,7 @@ func (s *serverDetailScreen) View() string {
 		{"Root user", s.srv.RootUser},
 		{"Password", password},
 		{"Expired at", s.srv.ExpiredAt},
+		{"Price", pricePtrToString(s.srv.Price)},
 		{"Purpose", s.srv.Purpose},
 		{"Tags", strings.Join(s.srv.Tags, ", ")},
 	}

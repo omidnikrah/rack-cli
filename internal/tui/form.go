@@ -21,6 +21,7 @@ type formConfig[T any] struct {
 	id        func(T) int
 	load      func(orig T, in []textinput.Model, vals []string)
 	build     func(id int, in []textinput.Model, vals []string) T
+	validate  func(T) error
 	save      func(T) tea.Cmd
 }
 
@@ -96,6 +97,12 @@ func (fs *formScreen[T]) Update(msg tea.Msg) (Screen, tea.Cmd) {
 
 			v := fs.cfg.build(fs.cfg.id(fs.original), fs.inputs, fs.values)
 			fs.err = nil
+			if fs.cfg.validate != nil {
+				if err := fs.cfg.validate(v); err != nil {
+					fs.err = err
+					return fs, nil
+				}
+			}
 			return fs, fs.cfg.save(v)
 		}
 
