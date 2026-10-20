@@ -28,4 +28,11 @@ var (
 			Foreground(lipgloss.Color("#8593A0"))
 
 	docStyle = lipgloss.NewStyle().Padding(1, 2)
+
+	tileStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#3A444D")).
+			Padding(0, 2).
+			Width(17).
+			MarginRight(1)
 )

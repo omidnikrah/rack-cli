@@ -2,6 +2,7 @@ package tui
 
 import (
 	"rack-cli/internal/domain"
+	"rack-cli/internal/entity"
 	"rack-cli/internal/server"
 
 	"charm.land/bubbles/v2/key"
@@ -10,7 +11,8 @@ import (
 )
 
 type menuScreen struct {
-	list list.Model
+	list  list.Model
+	stats overviewStats
 }
 
 func newMenu(servers *server.Service, domains domain.Storage, ips *serverIndex) *menuScreen {
@@ -49,7 +51,7 @@ func (ms *menuScreen) Init() tea.Cmd {
 func (ms *menuScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		ms.list.SetSize(msg.Width-4, msg.Height-10)
+		ms.list.SetSize(msg.Width-4, max(msg.Height-10-overviewHeight-1, 3))
 		return ms, nil
 
 	case tea.KeyPressMsg:
@@ -67,7 +69,11 @@ func (ms *menuScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 	return ms, cmd
 }
 
-func (ms *menuScreen) View() string { return ms.list.View() }
+func (ms *menuScreen) setData(servers []entity.Server, domains []entity.Domain) {
+	ms.stats = computeStats(servers, domains)
+}
+
+func (ms *menuScreen) View() string { return renderOverview(ms.stats) + "\n\n" + ms.list.View() }
 
 type menuItem struct {
 	label string
