@@ -188,6 +188,8 @@ func (m *Model) refreshLists() tea.Cmd {
 
 	for _, sc := range m.stack {
 		switch s := sc.(type) {
+		case *menuScreen:
+			s.setData(m.serverRows, m.domainRows)
 		case *listScreen[entity.Server]:
 			cmds = append(cmds, s.setItems(m.serverRows))
 		case *listScreen[entity.Domain]:

@@ -10,17 +10,21 @@ const (
 	maxIndividual = 3
 )
 
+func IsDue(days int) bool {
+	return days <= WarnDays
+}
+
 func Messages(servers []entity.Server, domains []entity.Domain) []string {
 	var msgs []string
 
 	for _, s := range servers {
-		if days, ok := s.DaysLeft(); ok && days <= WarnDays {
+		if days, ok := s.DaysLeft(); ok && IsDue(days) {
 			msgs = append(msgs, describe("Server", s.Label, days))
 		}
 	}
 
 	for _, d := range domains {
-		if days, ok := d.DaysLeft(); ok && days <= WarnDays {
+		if days, ok := d.DaysLeft(); ok && IsDue(days) {
 			msgs = append(msgs, describe("Domain", d.Name, days))
 		}
 	}
