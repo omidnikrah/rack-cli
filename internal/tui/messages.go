@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/entity"
 
 	tea "charm.land/bubbletea/v2"
 )

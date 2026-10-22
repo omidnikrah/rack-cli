@@ -9,6 +9,14 @@ A terminal app for tracking your servers and domains: credentials, prices, and e
 Requires Go 1.26 or later. `ping` and `ssh` must be available on your `PATH`.
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/omidnikrah/rack-cli/main/install.sh | bash
+```
+
+This downloads a prebuilt binary, checks its checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if that is not writable). macOS and Linux, amd64 and arm64 are supported. Set `RACK_CLI_INSTALL_DIR` to change the location or `RACK_CLI_VERSION` to pin a version.
+
+With Go instead:
+
+```sh
 go install github.com/omidnikrah/rack-cli/cmd/rack-cli@latest
 ```
 

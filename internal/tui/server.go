@@ -3,8 +3,8 @@ package tui
 import (
 	"context"
 	"fmt"
-	"rack-cli/internal/entity"
-	"rack-cli/internal/server"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/server"
 	"strconv"
 	"strings"
 	"time"

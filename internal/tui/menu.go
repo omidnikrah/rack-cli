@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"rack-cli/internal/entity"
-	"rack-cli/internal/server"
-	"rack-cli/internal/storage"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/server"
+	"github.com/omidnikrah/rack-cli/internal/storage"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"

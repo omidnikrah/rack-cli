@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/storage"
 	"os/exec"
-	"rack-cli/internal/entity"
-	"rack-cli/internal/storage"
 	"regexp"
 	"strconv"
 	"time"

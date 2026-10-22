@@ -1,4 +1,4 @@
-module rack-cli
+module github.com/omidnikrah/rack-cli
 
 go 1.26
 

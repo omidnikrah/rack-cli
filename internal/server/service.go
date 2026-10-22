@@ -1,8 +1,8 @@
 package server
 
 import (
-	"rack-cli/internal/entity"
-	"rack-cli/internal/secret"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/secret"
 )
 
 type Service struct {

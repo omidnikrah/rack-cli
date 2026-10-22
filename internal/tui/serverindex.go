@@ -1,6 +1,6 @@
 package tui
 
-import "rack-cli/internal/entity"
+import "github.com/omidnikrah/rack-cli/internal/entity"
 
 const deletedServerLabel = "deleted server"
 

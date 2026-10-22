@@ -2,8 +2,8 @@ package entity
 
 import (
 	"errors"
+	"github.com/omidnikrah/rack-cli/internal/secret"
 	"net"
-	"rack-cli/internal/secret"
 	"strings"
 	"time"
 )

@@ -2,8 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"rack-cli/internal/entity"
-	"rack-cli/internal/storage"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/storage"
 	"strconv"
 	"strings"
 

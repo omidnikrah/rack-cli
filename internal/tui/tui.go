@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"rack-cli/internal/entity"
-	"rack-cli/internal/server"
-	"rack-cli/internal/storage"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/server"
+	"github.com/omidnikrah/rack-cli/internal/storage"
 	"strings"
 
 	"charm.land/bubbles/v2/help"

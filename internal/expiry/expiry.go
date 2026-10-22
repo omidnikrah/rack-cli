@@ -2,7 +2,7 @@ package expiry
 
 import (
 	"fmt"
-	"rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/entity"
 )
 
 const (

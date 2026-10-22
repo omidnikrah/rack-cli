@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"rack-cli/internal/entity"
-	"rack-cli/internal/expiry"
+	"github.com/omidnikrah/rack-cli/internal/entity"
+	"github.com/omidnikrah/rack-cli/internal/expiry"
 	"strconv"
 
 	"charm.land/lipgloss/v2"

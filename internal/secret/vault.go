@@ -83,5 +83,5 @@ func (v *Vault) Open(sealed Sealed, id int) (string, error) {
 }
 
 func additionalData(id int) []byte {
-	return []byte("rack-cli/server/" + strconv.Itoa(id))
+	return []byte("github.com/omidnikrah/rack-cli/server/" + strconv.Itoa(id))
 }
