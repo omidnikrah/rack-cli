@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"rack-cli/internal/domain"
 	"rack-cli/internal/entity"
 	"rack-cli/internal/server"
+	"rack-cli/internal/storage"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -15,7 +15,7 @@ type menuScreen struct {
 	stats overviewStats
 }
 
-func newMenu(servers *server.Service, domains domain.Storage, ips *serverIndex) *menuScreen {
+func newMenu(servers *server.Service, domains storage.Repo[entity.Domain], ips *serverIndex) *menuScreen {
 	items := []list.Item{
 		menuItem{
 			label: "Manage Servers", open: func() Screen {

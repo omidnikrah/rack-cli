@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"rack-cli/internal/domain"
 	"rack-cli/internal/entity"
 	"rack-cli/internal/storage"
 	"strconv"
@@ -15,7 +14,7 @@ import (
 
 const serverField = 1
 
-func newDomainList(repo domain.Storage, ips *serverIndex) *listScreen[entity.Domain] {
+func newDomainList(repo storage.Repo[entity.Domain], ips *serverIndex) *listScreen[entity.Domain] {
 	return newListScreen(listConfig[entity.Domain]{
 		title: "Manage Domains",
 		id: func(d entity.Domain) int {
@@ -50,7 +49,7 @@ func newDomainList(repo domain.Storage, ips *serverIndex) *listScreen[entity.Dom
 	})
 }
 
-func newDomainForm(repo domain.Storage, original entity.Domain, ips *serverIndex) *formScreen[entity.Domain] {
+func newDomainForm(repo storage.Repo[entity.Domain], original entity.Domain, ips *serverIndex) *formScreen[entity.Domain] {
 	return newFormScreen(formConfig[entity.Domain]{
 		addTitle:  "Add Domain",
 		editTitle: "Edit Domain",
@@ -111,12 +110,12 @@ func newDomainForm(repo domain.Storage, original entity.Domain, ips *serverIndex
 }
 
 type domainDetailScreen struct {
-	repo domain.Storage
+	repo storage.Repo[entity.Domain]
 	dom  entity.Domain
 	ips  *serverIndex
 }
 
-func newDomainDetail(repo domain.Storage, dom entity.Domain, ips *serverIndex) *domainDetailScreen {
+func newDomainDetail(repo storage.Repo[entity.Domain], dom entity.Domain, ips *serverIndex) *domainDetailScreen {
 	return &domainDetailScreen{repo: repo, dom: dom, ips: ips}
 }
 

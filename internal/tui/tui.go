@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"rack-cli/internal/domain"
 	"rack-cli/internal/entity"
 	"rack-cli/internal/server"
+	"rack-cli/internal/storage"
 	"strings"
 
 	"charm.land/bubbles/v2/help"
@@ -13,7 +13,7 @@ import (
 
 type Model struct {
 	servers *server.Service
-	domains domain.Storage
+	domains storage.Repo[entity.Domain]
 	ips     *serverIndex
 
 	stack      []Screen
@@ -26,7 +26,7 @@ type Model struct {
 	err    error
 }
 
-func New(servers *server.Service, domains domain.Storage) *Model {
+func New(servers *server.Service, domains storage.Repo[entity.Domain]) *Model {
 	ips := &serverIndex{}
 
 	return &Model{
