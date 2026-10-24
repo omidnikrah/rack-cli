@@ -16,7 +16,7 @@ type Storage = storage.Repo[entity.Server]
 var pingRTT = regexp.MustCompile(`time[=<]([0-9.]+)\s*ms`)
 
 func SSHCommand(srv entity.Server) *exec.Cmd {
-	return exec.Command("ssh", srv.RootUser+"@"+srv.IP)
+	return exec.Command("ssh", "--", srv.RootUser+"@"+srv.IP)
 }
 
 func Ping(ctx context.Context, srv entity.Server) (time.Duration, error) {

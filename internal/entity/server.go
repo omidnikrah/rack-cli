@@ -46,6 +46,10 @@ func (s Server) Validate() error {
 		return errors.New("root user is required")
 	}
 
+	if strings.HasPrefix(strings.TrimSpace(s.RootUser), "-") {
+		return errors.New("root user cannot start with a dash")
+	}
+
 	if s.Price != nil && *s.Price == 0 {
 		return errors.New("price must be greater than 0")
 	}
