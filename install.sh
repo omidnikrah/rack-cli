@@ -80,7 +80,7 @@ main() {
   local base tmp dest
   base="$(release_url)"
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
+  trap "rm -rf '$tmp'" EXIT
 
   info "Downloading ${archive}"
   curl -fsSL "${base}/${archive}" -o "${tmp}/${archive}" \
