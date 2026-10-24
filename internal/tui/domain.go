@@ -153,14 +153,8 @@ func (d *domainDetailScreen) View() string {
 		{"Tags", strings.Join(d.dom.Tags, ", ")},
 	}
 
-	var b strings.Builder
-	for _, row := range rows {
-		b.WriteString(labelStyle.Render(row[0]))
-		b.WriteString(valueStyle.Render(row[1]))
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	days, ok := d.dom.DaysLeft()
+	return renderRows(rows, map[string]string{"Expires At": expiryBadge(days, ok)})
 }
 
 func (d *domainDetailScreen) ShortHelp() []key.Binding { return []key.Binding{keys.Edit, keys.Back} }
@@ -184,5 +178,6 @@ func domainRowDescription(d entity.Domain, ips *serverIndex) string {
 		parts = append(parts, fmt.Sprintf("[%s]", strings.Join(d.Tags, ", ")))
 	}
 
-	return strings.Join(parts, " · ")
+	days, ok := d.DaysLeft()
+	return withBadge(strings.Join(parts, " · "), expiryBadge(days, ok))
 }

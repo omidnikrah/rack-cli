@@ -253,13 +253,10 @@ func (s *serverDetailScreen) View() string {
 		{"Tags", strings.Join(s.srv.Tags, ", ")},
 	}
 
-	var b strings.Builder
-	for _, row := range rows {
-		b.WriteString(labelStyle.Render(row[0]))
-		b.WriteString(valueStyle.Render(row[1]))
-		b.WriteString("\n")
-	}
+	days, ok := s.srv.DaysLeft()
 
+	var b strings.Builder
+	b.WriteString(renderRows(rows, map[string]string{"Expired at": expiryBadge(days, ok)}))
 	b.WriteString("\n")
 
 	switch {
@@ -299,11 +296,13 @@ func pingCmd(srv entity.Server) tea.Cmd {
 }
 
 func serverRowDescription(s entity.Server) string {
-	if len(s.Tags) == 0 {
-		return fmt.Sprintf("%s · %s", s.IP, s.Purpose)
+	desc := fmt.Sprintf("%s · %s", s.IP, s.Purpose)
+	if len(s.Tags) > 0 {
+		desc += fmt.Sprintf(" · [%s]", strings.Join(s.Tags, ", "))
 	}
 
-	return fmt.Sprintf("%s · %s · [%s]", s.IP, s.Purpose, strings.Join(s.Tags, ", "))
+	days, ok := s.DaysLeft()
+	return withBadge(desc, expiryBadge(days, ok))
 }
 
 func copyPasswordCmd(plain string) tea.Cmd {

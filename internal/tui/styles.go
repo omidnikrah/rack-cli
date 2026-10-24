@@ -3,9 +3,11 @@ package tui
 import "charm.land/lipgloss/v2"
 
 var (
-	titleStyle = lipgloss.NewStyle().
+	headerStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#E9A23B")).
+			Foreground(lipgloss.Color("#1B1F24")).
+			Background(lipgloss.Color("#E9A23B")).
+			Padding(0, 1).
 			MarginBottom(1)
 
 	labelStyle = lipgloss.NewStyle().

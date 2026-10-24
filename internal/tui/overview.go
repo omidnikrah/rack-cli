@@ -49,7 +49,7 @@ func renderOverview(st overviewStats) string {
 	expiring := okStyle
 
 	if st.expiringSoon > 0 {
-		expiring = errorStyle
+		expiring = dangerStyle
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,

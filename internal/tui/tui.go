@@ -133,7 +133,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) View() tea.View {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("** " + m.current().Title() + " **"))
+	b.WriteString(headerStyle.Render(m.current().Title()))
 	b.WriteString("\n")
 	b.WriteString(m.current().View())
 

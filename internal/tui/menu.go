@@ -18,19 +18,18 @@ type menuScreen struct {
 func newMenu(servers *server.Service, domains storage.Repo[entity.Domain], ips *serverIndex) *menuScreen {
 	items := []list.Item{
 		menuItem{
-			label: "Manage Servers", open: func() Screen {
+			label: "Manage Servers", desc: "IPs, credentials and expiry dates", open: func() Screen {
 				return newServerList(servers)
 			},
 		},
 		menuItem{
-			label: "Manage Domains", open: func() Screen {
+			label: "Manage Domains", desc: "Registrars, renewals and linked servers", open: func() Screen {
 				return newDomainList(domains, ips)
 			},
 		},
 	}
 
 	delegate := list.NewDefaultDelegate()
-	delegate.ShowDescription = false
 
 	l := list.New(items, delegate, 0, 0)
 	l.SetShowTitle(false)
@@ -77,6 +76,7 @@ func (ms *menuScreen) View() string { return renderOverview(ms.stats) + "\n\n" +
 
 type menuItem struct {
 	label string
+	desc  string
 	open  func() Screen
 }
 
@@ -88,5 +88,5 @@ func (mi menuItem) Title() string {
 	return mi.label
 }
 func (mi menuItem) Description() string {
-	return ""
+	return mi.desc
 }
