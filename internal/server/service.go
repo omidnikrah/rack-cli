@@ -19,15 +19,36 @@ func (s *Service) Save(srv entity.Server, password string) (entity.Server, error
 		return srv, err
 	}
 
-	if srv.ID == 0 {
-		srv.Password = ""
-		created, err := s.Create(srv)
-		if err != nil {
-			return srv, err
-		}
+	if srv.ID != 0 {
+		return s.update(srv, password)
+	}
 
-		srv = created
-	} else if password == "" {
+	srv.Password = ""
+	created, err := s.Create(srv)
+	if err != nil {
+		return srv, err
+	}
+
+	if password == "" {
+		return created, nil
+	}
+
+	sealed, err := s.vault.Seal(password, created.ID)
+	if err == nil {
+		created.Password = sealed
+		err = s.Update(created)
+	}
+
+	if err != nil {
+		_ = s.Delete(created.ID)
+		return srv, err
+	}
+
+	return created, nil
+}
+
+func (s *Service) update(srv entity.Server, password string) (entity.Server, error) {
+	if password == "" {
 		current, err := s.Get(srv.ID)
 		if err != nil {
 			return srv, err

@@ -42,7 +42,9 @@ func (Keychain) Key() ([]byte, error) {
 
 func createKey() ([]byte, error) {
 	key := make([]byte, KeySize)
-	rand.Read(key)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("generating key: %w", err)
+	}
 
 	if err := keyring.Set(KeychainService, KeychainAccount, base64.StdEncoding.EncodeToString(key)); err != nil {
 		return nil, fmt.Errorf("saving key to keychain: %w", err)
