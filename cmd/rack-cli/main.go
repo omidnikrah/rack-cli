@@ -19,6 +19,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+// version is set at build time by goreleaser.
+var version = "dev"
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "rack-cli: %v\n", err)
@@ -34,7 +37,13 @@ func run() error {
 
 	check := flag.Bool("check", false, "print servers close to expiry and send notifications")
 	enable := flag.Bool("enable-notify", false, "run the expiry check daily at 09:00 (macOS)")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("rack-cli", version)
+		return nil
+	}
 
 	serverRepo := storage.NewJSONRepo[entity.Server](filepath.Join(dir, "servers.json"))
 	domainRepo := storage.NewJSONRepo[entity.Domain](filepath.Join(dir, "domains.json"))
