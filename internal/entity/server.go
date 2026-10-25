@@ -14,6 +14,7 @@ type Server struct {
 	IP        string        `json:"ip"`
 	RootUser  string        `json:"root_user"`
 	Password  secret.Sealed `json:"password"`
+	Provider  string        `json:"provider"`
 	Purpose   string        `json:"purpose"`
 	Price     *uint         `json:"price"`
 	ExpiredAt string        `json:"expired_at"`

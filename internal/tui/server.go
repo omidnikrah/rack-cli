@@ -37,7 +37,7 @@ func newServerList(svc *server.Service) *listScreen[entity.Server] {
 		},
 		rowDesc: serverRowDescription,
 		filter: func(s entity.Server) string {
-			return s.Label + " " + s.IP + " " + strings.Join(s.Tags, ", ")
+			return s.Label + " " + s.IP + " " + s.Provider + " " + strings.Join(s.Tags, ", ")
 		},
 		open: func(s entity.Server) Screen {
 			return newServerDetail(svc, s)
@@ -71,6 +71,7 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			{label: "IP address"},
 			{label: "Root user", placeholder: "root"},
 			{label: "Password", password: true},
+			{label: "Provider", placeholder: "Hetzner"},
 			{label: "Expired At", placeholder: "2026-12-31"},
 			{label: "Price", placeholder: "in USD"},
 			{label: "Purpose"},
@@ -81,10 +82,11 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			in[1].SetValue(s.IP)
 			in[2].SetValue(s.RootUser)
 			in[3].SetValue(s.Password)
-			in[4].SetValue(s.ExpiredAt)
-			in[5].SetValue(pricePtrToString(s.Price))
-			in[6].SetValue(s.Purpose)
-			in[7].SetValue(strings.Join(s.Tags, ", "))
+			in[4].SetValue(s.Provider)
+			in[5].SetValue(s.ExpiredAt)
+			in[6].SetValue(pricePtrToString(s.Price))
+			in[7].SetValue(s.Purpose)
+			in[8].SetValue(strings.Join(s.Tags, ", "))
 		},
 		build: func(id int, in []textinput.Model, vals []string) serverInput {
 			root := strings.TrimSpace(in[2].Value())
@@ -92,7 +94,7 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 				root = "root"
 			}
 
-			price, _ := toPricePtr(in[5].Value())
+			price, _ := toPricePtr(in[6].Value())
 
 			return serverInput{
 				Server: entity.Server{
@@ -101,10 +103,11 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 					IP:       strings.TrimSpace(in[1].Value()),
 					RootUser: root,
 
-					ExpiredAt: strings.TrimSpace(in[4].Value()),
+					Provider:  strings.TrimSpace(in[4].Value()),
+					ExpiredAt: strings.TrimSpace(in[5].Value()),
 					Price:     price,
-					Purpose:   strings.TrimSpace(in[6].Value()),
-					Tags:      parseTags(in[7].Value()),
+					Purpose:   strings.TrimSpace(in[7].Value()),
+					Tags:      parseTags(in[8].Value()),
 				},
 				Password: in[3].Value(),
 			}
@@ -132,7 +135,7 @@ func newServerPicker() *listScreen[entity.Server] {
 		},
 		rowDesc: serverRowDescription,
 		filter: func(s entity.Server) string {
-			return s.Label + " " + s.IP + " " + strings.Join(s.Tags, ", ")
+			return s.Label + " " + s.IP + " " + s.Provider + " " + strings.Join(s.Tags, ", ")
 		},
 		pick: func(s entity.Server) tea.Cmd {
 			return tea.Sequence(pop, func() tea.Msg {
@@ -247,6 +250,7 @@ func (s *serverDetailScreen) View() string {
 		{"IP", s.srv.IP},
 		{"Root user", s.srv.RootUser},
 		{"Password", password},
+		{"Provider", s.srv.Provider},
 		{"Expired at", s.srv.ExpiredAt},
 		{"Price", pricePtrToString(s.srv.Price)},
 		{"Purpose", s.srv.Purpose},
