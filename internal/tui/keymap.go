@@ -9,6 +9,7 @@ type keyMap struct {
 	Add    key.Binding
 	Edit   key.Binding
 	Delete key.Binding
+	Renew  key.Binding
 	Ping   key.Binding
 	SSH    key.Binding
 	Back   key.Binding
@@ -26,6 +27,7 @@ var keys = keyMap{
 	Add:    key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add")),
 	Edit:   key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
 	Delete: key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "delete")),
+	Renew:  key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "renew")),
 	Ping:   key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "ping")),
 	SSH:    key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "ssh")),
 	Back:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),

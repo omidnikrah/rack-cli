@@ -6,6 +6,7 @@ import (
 	"github.com/omidnikrah/rack-cli/internal/storage"
 	"strconv"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
@@ -39,7 +40,7 @@ func newDomainList(repo storage.Repo[entity.Domain], ips *serverIndex) *listScre
 			return newDomainForm(repo, d, ips)
 		},
 		remove: func(id int) tea.Cmd {
-			return deleteCmd(func() error {
+			return actionCmd(func() error {
 				return repo.Delete(id)
 			})
 		},
@@ -128,11 +129,18 @@ func (d *domainDetailScreen) Init() tea.Cmd {
 }
 
 func (d *domainDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
-	if k, ok := msg.(tea.KeyPressMsg); ok && key.Matches(k, keys.Back) {
-		return d, pop
+	k, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return d, nil
 	}
-	if k, ok := msg.(tea.KeyPressMsg); ok && key.Matches(k, keys.Edit) {
+
+	switch {
+	case key.Matches(k, keys.Back):
+		return d, pop
+	case key.Matches(k, keys.Edit):
 		return d, push(newDomainForm(d.repo, d.dom, d.ips))
+	case key.Matches(k, keys.Renew):
+		return d, renewConfirm(d.dom.Name, d.dom.Renewed(time.Now()).ExpiresAt, renewDomainCmd(d.repo, d.dom.ID))
 	}
 
 	return d, nil
@@ -157,10 +165,12 @@ func (d *domainDetailScreen) View() string {
 	return renderRows(rows, map[string]string{"Expires At": expiryBadge(days, ok)})
 }
 
-func (d *domainDetailScreen) ShortHelp() []key.Binding { return []key.Binding{keys.Edit, keys.Back} }
+func (d *domainDetailScreen) ShortHelp() []key.Binding {
+	return []key.Binding{keys.Renew, keys.Edit, keys.Back}
+}
 
 func (d *domainDetailScreen) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{keys.Edit, keys.Back, keys.Quit}}
+	return [][]key.Binding{{keys.Renew, keys.Edit, keys.Back, keys.Quit}}
 }
 
 func domainRowDescription(d entity.Domain, ips *serverIndex) string {
@@ -180,4 +190,15 @@ func domainRowDescription(d entity.Domain, ips *serverIndex) string {
 
 	days, ok := d.DaysLeft()
 	return withBadge(strings.Join(parts, " · "), expiryBadge(days, ok))
+}
+
+func renewDomainCmd(repo storage.Repo[entity.Domain], id int) tea.Cmd {
+	return actionCmd(func() error {
+		current, err := repo.Get(id)
+		if err != nil {
+			return err
+		}
+
+		return repo.Update(current.Renewed(time.Now()))
+	})
 }

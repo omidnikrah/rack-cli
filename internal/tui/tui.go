@@ -112,7 +112,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 
-	case deletedMsg:
+	case doneMsg:
 		if msg.err != nil {
 			m.err = msg.err
 			return m, nil

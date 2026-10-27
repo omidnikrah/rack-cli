@@ -46,3 +46,8 @@ func (d Domain) DaysLeft() (days int, ok bool) {
 func (d Domain) DaysLeftAt(now time.Time) (days int, ok bool) {
 	return daysUntil(d.ExpiresAt, now)
 }
+
+func (d Domain) Renewed(now time.Time) Domain {
+	d.ExpiresAt = renewDate(d.ExpiresAt, now, 12)
+	return d
+}

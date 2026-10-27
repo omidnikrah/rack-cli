@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/omidnikrah/rack-cli/internal/entity"
 	"github.com/omidnikrah/rack-cli/internal/server"
@@ -20,6 +21,8 @@ type copiedMsg struct {
 }
 
 const clipboardTTL = 30 * time.Second
+
+var errOneTimeRenew = errors.New("one-time servers cannot be renewed")
 
 const (
 	serverLabelField = iota
@@ -63,7 +66,7 @@ func newServerList(svc *server.Service) *listScreen[entity.Server] {
 			return newServerForm(svc, s)
 		},
 		remove: func(id int) tea.Cmd {
-			return deleteCmd(func() error {
+			return actionCmd(func() error {
 				return svc.Delete(id)
 			})
 		},
@@ -246,6 +249,11 @@ func (s *serverDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 			return s, pop
 		case key.Matches(msg, keys.Edit):
 			return s, push(newServerForm(s.svc, s.srv))
+		case key.Matches(msg, keys.Renew):
+			if !s.srv.CanRenew() {
+				return s, fail(errOneTimeRenew)
+			}
+			return s, renewConfirm(s.srv.Label, s.srv.Renewed(time.Now()).ExpiredAt, renewServerCmd(s.svc, s.srv.ID))
 		case key.Matches(msg, keys.Reveal):
 			if !s.rootAccess() {
 				return s, nil
@@ -339,17 +347,43 @@ func (s *serverDetailScreen) View() string {
 }
 
 func (s *serverDetailScreen) ShortHelp() []key.Binding {
-	if !s.rootAccess() {
-		return []key.Binding{keys.Edit, keys.Back}
+	var bindings []key.Binding
+	if s.rootAccess() {
+		bindings = append(bindings, keys.Ping, keys.SSH, keys.Reveal, keys.Copy)
 	}
-	return []key.Binding{keys.Ping, keys.SSH, keys.Reveal, keys.Copy, keys.Edit, keys.Back}
+	if s.srv.CanRenew() {
+		bindings = append(bindings, keys.Renew)
+	}
+
+	return append(bindings, keys.Edit, keys.Back)
 }
 
 func (s *serverDetailScreen) FullHelp() [][]key.Binding {
-	if !s.rootAccess() {
-		return [][]key.Binding{{keys.Edit, keys.Back, keys.Quit}}
+	var groups [][]key.Binding
+	if s.rootAccess() {
+		groups = append(groups, []key.Binding{keys.Ping, keys.SSH, keys.Reveal, keys.Copy})
 	}
-	return [][]key.Binding{{keys.Ping, keys.SSH, keys.Reveal, keys.Copy}, {keys.Edit, keys.Back, keys.Quit}}
+
+	manage := []key.Binding{keys.Edit, keys.Back, keys.Quit}
+	if s.srv.CanRenew() {
+		manage = append([]key.Binding{keys.Renew}, manage...)
+	}
+
+	return append(groups, manage)
+}
+
+func renewServerCmd(svc *server.Service, id int) tea.Cmd {
+	return actionCmd(func() error {
+		current, err := svc.Get(id)
+		if err != nil {
+			return err
+		}
+		if !current.CanRenew() {
+			return errOneTimeRenew
+		}
+
+		return svc.Update(current.Renewed(time.Now()))
+	})
 }
 
 func pingCmd(srv entity.Server) tea.Cmd {
