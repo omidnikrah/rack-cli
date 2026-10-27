@@ -21,6 +21,20 @@ type copiedMsg struct {
 
 const clipboardTTL = 30 * time.Second
 
+const (
+	serverLabelField = iota
+	serverTypeField
+	serverIPField
+	serverUserField
+	serverPasswordField
+	serverProviderField
+	serverBillingField
+	serverPriceField
+	serverExpiredField
+	serverPurposeField
+	serverTagsField
+)
+
 type serverInput struct {
 	entity.Server
 	Password string
@@ -54,6 +68,9 @@ func newServerList(svc *server.Service) *listScreen[entity.Server] {
 			})
 		},
 		confirm: func(s entity.Server) string {
+			if !s.HasHost() {
+				return fmt.Sprintf("Delete %s?", s.Label)
+			}
 			return fmt.Sprintf("Delete %s (%s)?", s.Label, s.IP)
 		},
 	})
@@ -67,49 +84,67 @@ func newServerForm(svc *server.Service, original entity.Server) *formScreen[serv
 			return s.ID
 		},
 		fields: []fieldSpec{
-			{label: "Label"},
-			{label: "IP address"},
-			{label: "Root user", placeholder: "root"},
-			{label: "Password", password: true},
-			{label: "Provider", placeholder: "Hetzner"},
-			{label: "Expired At", placeholder: "2026-12-31"},
-			{label: "Price", placeholder: "in USD"},
-			{label: "Purpose"},
-			{label: "Tags", placeholder: "comma, separated"},
+			serverLabelField: {label: "Label"},
+			serverTypeField: {label: "Type", placeholder: "enter to pick", required: true, pick: func() Screen {
+				return newChoicePicker("Select Type", serverTypeChoices())
+			}},
+			serverIPField:       {label: "IP address", hidden: hideRootAccessFields},
+			serverUserField:     {label: "Login user", placeholder: "root", hidden: hideRootAccessFields},
+			serverPasswordField: {label: "Password", password: true, hidden: hideRootAccessFields},
+			serverProviderField: {label: "Provider", placeholder: "Hetzner"},
+			serverBillingField: {label: "Billing", placeholder: "enter to pick", required: true, pick: func() Screen {
+				return newChoicePicker("Select Billing Cycle", billingChoices())
+			}},
+			serverPriceField:   {label: "Price", placeholder: "in USD, per billing cycle"},
+			serverExpiredField: {label: "Expired At", placeholder: "2026-12-31"},
+			serverPurposeField: {label: "Purpose"},
+			serverTagsField:    {label: "Tags", placeholder: "comma, separated"},
 		},
 		load: func(s serverInput, in []textinput.Model, vals []string) {
-			in[0].SetValue(s.Label)
-			in[1].SetValue(s.IP)
-			in[2].SetValue(s.RootUser)
-			in[3].SetValue(s.Password)
-			in[4].SetValue(s.Provider)
-			in[5].SetValue(s.ExpiredAt)
-			in[6].SetValue(pricePtrToString(s.Price))
-			in[7].SetValue(s.Purpose)
-			in[8].SetValue(strings.Join(s.Tags, ", "))
+			kind, cycle := s.Type.Normalize(), s.Billing.Normalize()
+
+			in[serverLabelField].SetValue(s.Label)
+			setChoice(in, vals, serverTypeField, string(kind), kind.Label())
+			in[serverIPField].SetValue(s.IP)
+			in[serverUserField].SetValue(s.RootUser)
+			in[serverPasswordField].SetValue(s.Password)
+			in[serverProviderField].SetValue(s.Provider)
+			setChoice(in, vals, serverBillingField, string(cycle), cycle.Label())
+			in[serverPriceField].SetValue(pricePtrToString(s.Price))
+			in[serverExpiredField].SetValue(s.ExpiredAt)
+			in[serverPurposeField].SetValue(s.Purpose)
+			in[serverTagsField].SetValue(strings.Join(s.Tags, ", "))
 		},
 		build: func(id int, in []textinput.Model, vals []string) serverInput {
-			root := strings.TrimSpace(in[2].Value())
-			if root == "" {
-				root = "root"
+			kind := entity.ServerType(vals[serverTypeField]).Normalize()
+
+			ip, root, password := "", "", ""
+			if kind.HasRootAccess() {
+				ip = strings.TrimSpace(in[serverIPField].Value())
+				root = strings.TrimSpace(in[serverUserField].Value())
+				password = in[serverPasswordField].Value()
+				if root == "" {
+					root = "root"
+				}
 			}
 
-			price, _ := toPricePtr(in[6].Value())
+			price, _ := toPricePtr(in[serverPriceField].Value())
 
 			return serverInput{
 				Server: entity.Server{
-					ID:       id,
-					Label:    strings.TrimSpace(in[0].Value()),
-					IP:       strings.TrimSpace(in[1].Value()),
-					RootUser: root,
-
-					Provider:  strings.TrimSpace(in[4].Value()),
-					ExpiredAt: strings.TrimSpace(in[5].Value()),
+					ID:        id,
+					Label:     strings.TrimSpace(in[serverLabelField].Value()),
+					Type:      kind,
+					IP:        ip,
+					RootUser:  root,
+					Provider:  strings.TrimSpace(in[serverProviderField].Value()),
+					Billing:   entity.BillingCycle(vals[serverBillingField]).Normalize(),
 					Price:     price,
-					Purpose:   strings.TrimSpace(in[7].Value()),
-					Tags:      parseTags(in[8].Value()),
+					ExpiredAt: strings.TrimSpace(in[serverExpiredField].Value()),
+					Purpose:   strings.TrimSpace(in[serverPurposeField].Value()),
+					Tags:      parseTags(in[serverTagsField].Value()),
 				},
-				Password: in[3].Value(),
+				Password: password,
 			}
 		},
 		validate: func(s serverInput) error {
@@ -139,7 +174,7 @@ func newServerPicker() *listScreen[entity.Server] {
 		},
 		pick: func(s entity.Server) tea.Cmd {
 			return tea.Sequence(pop, func() tea.Msg {
-				return pickedMsg{value: strconv.Itoa(s.ID), label: s.IP}
+				return pickedMsg{value: strconv.Itoa(s.ID), label: hostLabel(s)}
 			})
 		},
 	})
@@ -170,6 +205,10 @@ func newServerDetail(svc *server.Service, srv entity.Server) *serverDetailScreen
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	return &serverDetailScreen{svc: svc, srv: srv, spinner: sp}
+}
+
+func (s *serverDetailScreen) rootAccess() bool {
+	return s.srv.Type.HasRootAccess()
 }
 
 func (s *serverDetailScreen) Title() string {
@@ -208,6 +247,9 @@ func (s *serverDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 		case key.Matches(msg, keys.Edit):
 			return s, push(newServerForm(s.svc, s.srv))
 		case key.Matches(msg, keys.Reveal):
+			if !s.rootAccess() {
+				return s, nil
+			}
 			if s.plain != "" {
 				s.plain = ""
 				return s, nil
@@ -219,18 +261,24 @@ func (s *serverDetailScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 			s.plain = plain
 			return s, nil
 		case key.Matches(msg, keys.Copy):
+			if !s.rootAccess() {
+				return s, nil
+			}
 			plain, err := s.svc.Password(s.srv)
 			if err != nil {
 				return s, fail(err)
 			}
 			return s, copyPasswordCmd(plain)
 		case key.Matches(msg, keys.Ping):
-			if s.pinging {
+			if s.pinging || !s.rootAccess() {
 				return s, nil
 			}
 			s.pinging, s.pinged = true, false
 			return s, tea.Batch(s.spinner.Tick, pingCmd(s.srv))
 		case key.Matches(msg, keys.SSH):
+			if !s.rootAccess() {
+				return s, nil
+			}
 			return s, tea.ExecProcess(server.SSHCommand(s.srv), func(err error) tea.Msg {
 				return sshFinishedMsg{err: err}
 			})
@@ -246,16 +294,24 @@ func (s *serverDetailScreen) View() string {
 		password = s.plain
 	}
 
-	rows := [][2]string{
-		{"IP", s.srv.IP},
-		{"Root user", s.srv.RootUser},
-		{"Password", password},
-		{"Provider", s.srv.Provider},
-		{"Expired at", s.srv.ExpiredAt},
-		{"Price", pricePtrToString(s.srv.Price)},
-		{"Purpose", s.srv.Purpose},
-		{"Tags", strings.Join(s.srv.Tags, ", ")},
+	rows := [][2]string{{"Type", s.srv.Type.Label()}}
+	if s.srv.HasHost() {
+		rows = append(rows, [2]string{"IP", s.srv.IP})
 	}
+	if s.srv.RootUser != "" {
+		rows = append(rows, [2]string{"Login user", s.srv.RootUser})
+	}
+	if s.rootAccess() {
+		rows = append(rows, [2]string{"Password", password})
+	}
+	rows = append(rows,
+		[2]string{"Provider", s.srv.Provider},
+		[2]string{"Billing", s.srv.Billing.Label()},
+		[2]string{"Price", priceWithCycle(s.srv)},
+		[2]string{"Expired at", s.srv.ExpiredAt},
+		[2]string{"Purpose", s.srv.Purpose},
+		[2]string{"Tags", strings.Join(s.srv.Tags, ", ")},
+	)
 
 	days, ok := s.srv.DaysLeft()
 
@@ -283,10 +339,16 @@ func (s *serverDetailScreen) View() string {
 }
 
 func (s *serverDetailScreen) ShortHelp() []key.Binding {
+	if !s.rootAccess() {
+		return []key.Binding{keys.Edit, keys.Back}
+	}
 	return []key.Binding{keys.Ping, keys.SSH, keys.Reveal, keys.Copy, keys.Edit, keys.Back}
 }
 
 func (s *serverDetailScreen) FullHelp() [][]key.Binding {
+	if !s.rootAccess() {
+		return [][]key.Binding{{keys.Edit, keys.Back, keys.Quit}}
+	}
 	return [][]key.Binding{{keys.Ping, keys.SSH, keys.Reveal, keys.Copy}, {keys.Edit, keys.Back, keys.Quit}}
 }
 
@@ -299,14 +361,37 @@ func pingCmd(srv entity.Server) tea.Cmd {
 	}
 }
 
+func hideRootAccessFields(vals []string) bool {
+	return !entity.ServerType(vals[serverTypeField]).HasRootAccess()
+}
+
 func serverRowDescription(s entity.Server) string {
-	desc := fmt.Sprintf("%s · %s", s.IP, s.Purpose)
+	parts := []string{s.Type.Label()}
+	for _, p := range []string{s.IP, s.Provider, s.Purpose} {
+		if p != "" {
+			parts = append(parts, p)
+		}
+	}
 	if len(s.Tags) > 0 {
-		desc += fmt.Sprintf(" · [%s]", strings.Join(s.Tags, ", "))
+		parts = append(parts, fmt.Sprintf("[%s]", strings.Join(s.Tags, ", ")))
 	}
 
 	days, ok := s.DaysLeft()
-	return withBadge(desc, expiryBadge(days, ok))
+	return withBadge(strings.Join(parts, " · "), expiryBadge(days, ok))
+}
+
+func hostLabel(s entity.Server) string {
+	if s.HasHost() {
+		return s.IP
+	}
+	return s.Label
+}
+
+func priceWithCycle(s entity.Server) string {
+	if s.Price == nil {
+		return ""
+	}
+	return pricePtrToString(s.Price) + " " + s.Billing.PerLabel()
 }
 
 func copyPasswordCmd(plain string) tea.Cmd {

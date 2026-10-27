@@ -12,6 +12,8 @@ type fieldSpec struct {
 	placeholder string
 	password    bool
 	pick        func() Screen
+	required    bool
+	hidden      func(vals []string) bool
 }
 
 type formConfig[T any] struct {
@@ -83,16 +85,16 @@ func (fs *formScreen[T]) Update(msg tea.Msg) (Screen, tea.Cmd) {
 		case "esc":
 			return fs, pop
 		case "tab", "down":
-			return fs, fs.focusOn(fs.focus + 1)
+			return fs, fs.step(1)
 		case "shift+tab", "up":
-			return fs, fs.focusOn(fs.focus - 1)
+			return fs, fs.step(-1)
 		case "enter":
 			if p := fs.cfg.fields[fs.focus].pick; p != nil {
 				return fs, push(p())
 			}
 
-			if fs.focus < len(fs.inputs)-1 {
-				return fs, fs.focusOn(fs.focus + 1)
+			if fs.hasVisibleAfter(fs.focus) {
+				return fs, fs.step(1)
 			}
 
 			v := fs.cfg.build(fs.cfg.id(fs.original), fs.inputs, fs.values)
@@ -113,7 +115,7 @@ func (fs *formScreen[T]) Update(msg tea.Msg) (Screen, tea.Cmd) {
 	}
 
 	if k, ok := msg.(tea.KeyPressMsg); ok && fs.cfg.fields[fs.focus].pick != nil {
-		if s := k.String(); s == "backspace" || s == "delete" {
+		if s := k.String(); (s == "backspace" || s == "delete") && !fs.cfg.fields[fs.focus].required {
 			fs.inputs[fs.focus].SetValue("")
 			fs.values[fs.focus] = ""
 		}
@@ -129,6 +131,10 @@ func (fs *formScreen[T]) View() string {
 	var b strings.Builder
 
 	for i := range fs.inputs {
+		if !fs.visible(i) {
+			continue
+		}
+
 		style, marker := blurredStyle, "  "
 		if i == fs.focus {
 			style, marker = focusedStyle, "> "
@@ -151,8 +157,32 @@ func (fs *formScreen[T]) capturesInput() bool {
 	return true
 }
 
+func (fs *formScreen[T]) visible(i int) bool {
+	hidden := fs.cfg.fields[i].hidden
+	return hidden == nil || !hidden(fs.values)
+}
+
+func (fs *formScreen[T]) hasVisibleAfter(i int) bool {
+	for j := i + 1; j < len(fs.inputs); j++ {
+		if fs.visible(j) {
+			return true
+		}
+	}
+	return false
+}
+
+func (fs *formScreen[T]) step(dir int) tea.Cmd {
+	n := len(fs.inputs)
+	for i := 1; i <= n; i++ {
+		if j := (fs.focus + dir*i + n) % n; fs.visible(j) {
+			return fs.focusOn(j)
+		}
+	}
+	return nil
+}
+
 func (fs *formScreen[T]) focusOn(i int) tea.Cmd {
-	fc := len(fs.cfg.fields)
+	fc := len(fs.inputs)
 	fs.focus = ((i % fc) + fc) % fc
 	var cmd tea.Cmd
 
