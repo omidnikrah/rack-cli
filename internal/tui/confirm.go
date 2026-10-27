@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -41,4 +43,8 @@ func (s *confirmScreen) Update(msg tea.Msg) (Screen, tea.Cmd) {
 
 func (s *confirmScreen) View() string {
 	return s.prompt + "\n\n" + errorStyle.Render("y") + " yes · " + okStyle.Render("n") + " cancel"
+}
+
+func renewConfirm(name, until string, renew tea.Cmd) tea.Cmd {
+	return push(newConfirm(fmt.Sprintf("Renew %s until %s?", name, until), renew))
 }

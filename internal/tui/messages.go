@@ -20,7 +20,7 @@ type savedMsg struct {
 	err error
 }
 
-type deletedMsg struct {
+type doneMsg struct {
 	err error
 }
 
@@ -45,8 +45,8 @@ func saveCmd(do func() error) tea.Cmd {
 	}
 }
 
-func deleteCmd(do func() error) tea.Cmd {
+func actionCmd(do func() error) tea.Cmd {
 	return func() tea.Msg {
-		return deletedMsg{do()}
+		return doneMsg{do()}
 	}
 }

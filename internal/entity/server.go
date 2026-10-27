@@ -129,15 +129,21 @@ func (c BillingCycle) PerLabel() string {
 }
 
 func (c BillingCycle) timesPerYear() uint {
+	if months := c.months(); months > 0 {
+		return uint(12 / months)
+	}
+
+	return 0
+}
+
+func (c BillingCycle) months() int {
 	switch c.Normalize() {
 	case BillingMonthly:
-		return 12
-	case BillingQuarterly:
-		return 4
-	case BillingYearly:
 		return 1
-	case BillingOneTime:
-		return 0
+	case BillingQuarterly:
+		return 3
+	case BillingYearly:
+		return 12
 	}
 
 	return 0
@@ -222,4 +228,13 @@ func (s Server) DaysLeft() (days int, ok bool) {
 
 func (s Server) DaysLeftAt(now time.Time) (days int, ok bool) {
 	return daysUntil(s.ExpiredAt, now)
+}
+
+func (s Server) CanRenew() bool {
+	return s.Billing.months() > 0
+}
+
+func (s Server) Renewed(now time.Time) Server {
+	s.ExpiredAt = renewDate(s.ExpiredAt, now, s.Billing.months())
+	return s
 }
