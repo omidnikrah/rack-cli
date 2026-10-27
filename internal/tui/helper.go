@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/omidnikrah/rack-cli/internal/entity"
 )
 
 func toPricePtr(p string) (*uint, error) {
@@ -17,7 +19,7 @@ func toPricePtr(p string) (*uint, error) {
 	if price < 0 {
 		return nil, fmt.Errorf("price cannot be negative")
 	}
-	priceVal := uint(math.Round(price * 100))
+	priceVal := uint(min(math.Round(price*100), float64(entity.MaxPrice)+1))
 	return &priceVal, nil
 }
 

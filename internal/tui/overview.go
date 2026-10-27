@@ -12,7 +12,7 @@ type overviewStats struct {
 	servers      int
 	domains      int
 	expiringSoon int
-	totalPrice   uint
+	yearlyCost   uint
 }
 
 func computeStats(servers []entity.Server, domains []entity.Domain) overviewStats {
@@ -22,9 +22,7 @@ func computeStats(servers []entity.Server, domains []entity.Domain) overviewStat
 		if days, ok := s.DaysLeft(); ok && expiry.IsDue(days) {
 			st.expiringSoon++
 		}
-		if s.Price != nil {
-			st.totalPrice += *s.Price
-		}
+		st.yearlyCost += s.YearlyPrice()
 	}
 
 	for _, d := range domains {
@@ -32,7 +30,7 @@ func computeStats(servers []entity.Server, domains []entity.Domain) overviewStat
 			st.expiringSoon++
 		}
 		if d.Price != nil {
-			st.totalPrice += *d.Price
+			st.yearlyCost += *d.Price
 		}
 	}
 
@@ -56,6 +54,6 @@ func renderOverview(st overviewStats) string {
 		tile("Servers", strconv.Itoa(st.servers), focusedStyle),
 		tile("Domains", strconv.Itoa(st.domains), focusedStyle),
 		tile("Expiring", strconv.Itoa(st.expiringSoon), expiring),
-		tile("Total price", "$"+pricePtrToString(&st.totalPrice), valueStyle),
+		tile("Yearly cost", "$"+pricePtrToString(&st.yearlyCost), valueStyle),
 	)
 }

@@ -32,8 +32,8 @@ func (d Domain) Validate() error {
 		return errors.New("name cannot contain spaces")
 	}
 
-	if d.Price != nil && *d.Price == 0 {
-		return errors.New("price must be greater than 0")
+	if err := validatePrice(d.Price); err != nil {
+		return err
 	}
 
 	return validateDate(d.ExpiresAt, "expires at")
