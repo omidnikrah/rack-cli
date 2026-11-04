@@ -13,6 +13,7 @@ import (
 	"github.com/omidnikrah/rack-cli/internal/storage"
 	"github.com/omidnikrah/rack-cli/internal/transfer"
 	"github.com/omidnikrah/rack-cli/internal/tui"
+	"github.com/omidnikrah/rack-cli/internal/upgrade"
 	"io"
 	"os"
 	"path/filepath"
@@ -39,6 +40,7 @@ func run() error {
 	check := flag.Bool("check", false, "print servers close to expiry and send notifications")
 	enable := flag.Bool("enable-notify", false, "run the expiry check daily at 09:00 (macOS)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
+	doUpgrade := flag.Bool("upgrade", false, "install the latest release over this binary")
 	exportPath := flag.String("export", "", "write servers and domains to a JSON file (- for stdout)")
 	importPath := flag.String("import", "", "add servers and domains from a JSON export, skipping ones that already exist")
 	withPasswords := flag.Bool("with-passwords", false, "include passwords, as plain text, in --export")
@@ -48,6 +50,10 @@ func run() error {
 	if *showVersion {
 		fmt.Println("rack-cli", version)
 		return nil
+	}
+
+	if *doUpgrade {
+		return runUpgrade(os.Stdout)
 	}
 
 	serverRepo := storage.NewJSONRepo[entity.Server](filepath.Join(dir, "servers.json"))
@@ -156,5 +162,20 @@ func runBackup(w io.Writer, dataDir, backupRoot string) error {
 	}
 
 	fmt.Fprintf(w, "Backed up to %s\n", dest)
+	return nil
+}
+
+func runUpgrade(w io.Writer) error {
+	res, err := upgrade.Run(version)
+	if err != nil {
+		return err
+	}
+
+	if !res.Upgraded {
+		fmt.Fprintf(w, "Already on the latest version (%s).\n", res.To)
+		return nil
+	}
+
+	fmt.Fprintf(w, "Upgraded %s from %s to %s.\n", res.Path, res.From, res.To)
 	return nil
 }
