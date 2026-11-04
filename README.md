@@ -40,6 +40,17 @@ rack-cli --enable-notify    # run the check daily at 09:00
 
 Notifications only work on macOS.
 
+## Export, import and backup
+
+```sh
+rack-cli --export data.json                    # write servers and domains to a JSON file
+rack-cli --export data.json --with-passwords   # also include passwords, as plain text
+rack-cli --import data.json                    # add what's in the file, skipping items that already exist
+rack-cli --backup ~/backups                    # copy the data files into a timestamped folder
+```
+
+Exports leave passwords out unless you pass `--with-passwords`, so keep a file made with it somewhere safe. `--export` won't overwrite an existing file, and `-` writes to stdout. Imports match servers by label and domains by name. A backup copies the raw data files, so its passwords can only be read with the same keychain key.
+
 ## Data storage
 
 Data is stored as JSON in the user config directory (`~/Library/Application Support/rack-cli` on macOS, `~/.config/rack-cli` on Linux), accessible only by the current user.
