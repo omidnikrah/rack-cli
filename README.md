@@ -12,6 +12,8 @@ curl -fsSL https://raw.githubusercontent.com/omidnikrah/rack-cli/main/install.sh
 
 The script installs the latest release to `/usr/local/bin`, or `~/.local/bin` if that isn't writable. It supports macOS and Linux on amd64 and arm64.
 
+To upgrade later, run `rack-cli --upgrade`.
+
 ## Usage
 
 ```sh
